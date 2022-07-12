@@ -1,0 +1,371 @@
+                     IR Remote Control Receiver
+
+     Have you ever wanted to make good use of all those remote
+control units from TVs, VCRs, stereo equipment, etc., which have been
+stacking up over the years? Have you ever wanted to add remote
+operation to your electronic projects? This, simple-to-build low cost
+construction project, will receive and convert the output of
+virtually any infrared remote control transmitter - using a 40KHz
+carrier - to logic levels which can be used to control all your
+favorite toys, from robotics to rail roads. This basic "building
+block" can even be used to turn on and off just about anything in
+your home (lamps, fans, radios, alarms, electric locks, space
+heaters, air conditioners) without leaving the comfort of your own
+lounge chair. Anything which operates on electricity, can be
+controlled with that $3.00 remote control - found in abundance at
+surplus dealers and ham fests. The only limit being that of your
+imagination!
+
+     The IR Remote Control Receiver as explained here, has 7
+individual TTL level outputs which can be programmed to correspond to
+any button on your remote control and be set up for either: latching
+outputs which toggle between "high" and "low" each time the button is
+pressed, or momentary outputs which switch and remain "high" for the
+duration the remote's button is pressed. Programming is a simple
+procedure of placing the unit in the programming mode, aiming your
+remote control transmitter at the project and pressing buttons to let
+it "learn" and record the data streams transmitted by your particular
+remote.
+
+About Remote Control Transmitters
+
+     The standard infrared remote control transmitter used to control
+your TV, stereo, VCR, etc., uses a photo diode which transmits in the
+near infrared range and is pulsed on and off at a 40KHz rate.
+Although there are transmitters which use a different carrier
+frequency, 40KHz is the most common, and will be used as the standard
+in this circuit. In fact, upon obtaining a supply of remote controls
+of various different brand names for research on this subject, the
+author was unable to find one which used a frequency other then
+40KHz. If, however, you have a remote control transmitter which uses
+a different carrier frequency, simply substitute the 40KHz IR module
+used in this circuit with one that is tuned to your transmitter's
+frequency. Digi-Key has IR modules tuned to 32KHz and 36KHz and can
+be reached at 800-344-4539.
+
+     The IR signal is modulated by being transmitting in bursts of
+40KHz pulses as shown in figure 1. By alternating the exact length of
+the burst, or the time between bursts, it is possible to encode
+intelligent data on the IR signal; this being the method used by
+these remote control transmitters to indicate which button is being
+pressed. Figure 1a shows an IR signal from a transmitter which
+encodes the digital data stream on the carrier by alternating the
+length of the burst, while figure 1b shows one which alternates the
+time between bursts. A typical receiver in a host product will for
+instance, decode the individual logic levels in the data stream by
+comparing this pattern of bursts with an internal clock operating at
+the same frequency as one within the transmitter. Although the
+frequency of this clock used for timing, varies among remote control
+manufacturers, as does the choice of alternating the length of the
+burst or that of the time between bursts, the same basic principle
+applies and can be utilized.
+
+     In most cases the IR signal consists of a pattern of anywhere
+from 12 to 32 bursts of 40KHz infrared. This pattern is continuously
+repeated while the transmitter's button is held down. The author did
+run across one model whose burst pattern was transmitted only upon
+initial contact with the button, and was followed by a short burst
+every 100ms or so, until the button was released.
+
+Circuit Theory
+
+     The circuit is made simple by the self contained infrared
+Receiver/Demodulator (MOD1). A block diagram of the IR module is
+shown in figure 2. The modulated IR signal is detected by the photo
+diode which has its peak sensitivity in the near infrared range.
+After passing through a preamplifier/limiter, the built-in band pass
+filter then rejects all signals outside the pass band of 40KHz. This
+reduces or eliminates false operation caused by other light sources.
+The remaining signal is fed to the demodulator, integrator, and
+comparator which outputs a clean TTL level pulse stream without the
+carrier. Figure 3 demonstrates the output pulse of the IR module with
+respect to the remote control transmitter's signal being received at
+its input. Note, how the presence of an IR burst (figure 3a) produces
+a low at the output of the IR module (figure 3b).
+
+     Refer to the schematic diagram shown in figure 4. The heart of
+the circuit is IC1 (part no. PIC16C54), an 8-bit CMOS microcontroller
+manufactured by Microchip. This microcontroller has one 8-bit I/O
+port and one 4-bit I/O port. Because each I/O pin can be used and
+configured individually, it was possible to arrange them to greatly
+simplify PC board layout and require only a single-sided board. This
+is the reason for the non-uniform use of I/O pins as shown in the
+schematic.
+
+     IC1 is linked to and stores all its data in IC2 (part no.
+93LC46), a 1K serial EEPROM (Electrically Erasable Programmable Read
+Only Memory) also manufactured by Microchip. In this application the
+93LC46 uses a 3-wire interface. Of the three wires there is a CHIP
+SELECT, CLOCK, and DATA IN/OUT. Because the DATA IN and DATA OUT
+share the same line, a 1K resistor (R2) is used to limit the current
+flow during those transition times between WRITE and READ when there
+are conflicting logic levels.
+
+     IC1 communicates with the 93LC46 by placing a high on the CHIP
+SELECT pin. Data is then transferred serially to and from the 93LC46
+on the positive transition of the clock pin. Each READ or WRITE
+function is preceded by a start bit, an opcode - identifying the
+function to be performed (read, write, etc.) - then a 7-bit address,
+followed by the 8 bits of data which is being written to, or read
+from that address. Immediately preceding and following all WRITE
+operations, the microcontroller sends instructions to the 93LC46
+which enables/disables the WRITE function, thereby protecting the
+data thereafter.
+
+     During the programming mode, IC1 reads the IR data streams from
+MOD1 and converts them to data patterns which can be stored in IC2.
+These data patterns are used for comparison while in normal
+operation. More on this later.
+
+     Power for the circuit is conditioned by IC3, a low current
+5-volt regulator which will accept any DC voltage between 7 and 25
+volts. C1 and C2 stabilize the operation of the regulator. Crystal
+(XTAL1) sets the internal oscillator of IC1 to 4MHz. JMP1 is actually
+two closely spaced pads on the board which, when momentarily jumpered
+with a screwdriver, will place IC1 in the programming mode and light
+LED1.
+
+The PIC Firmware
+
+     A pre-programmed PIC16C54 is available from the supplier
+mentioned in the parts list. The source and object code are available
+on the Gernsback BBS for those who have the proper equipment and wish
+to program their own PIC.
+
+     As mentioned earlier, the exact protocol used to indicate the
+different logic levels in the data stream transmitted by a typical IR
+remote control varies from manufacturer to manufacturer. Because of
+this, when recording the data streams related to each button on the
+remote, the firmware in IC1 is configured NOT to try to identify
+logic "1"s or "0"s, but instead, to measure the width of each IR
+burst and the time between bursts; storing these values in memory.
+This pattern can then be used to find a match while in normal
+operation.
+
+     When measuring, unfortunately there is only 16 8-bit registers
+available in IC1 to process and hold these values before sending them
+to memory. Since both the bursts and time between bursts must be
+measured, a 32 burst pattern will require 64 measurements. To
+compress the data so it can be handled by 16 registers, the program
+in IC1 does a series of tricks as explained: Because a change in the
+length of either, the burst, or the time between bursts will be used
+by the transmitter to encode the data but not both, measurements of
+each (per cycle) can be added together and placed in the same
+register. In addition, because we are only concerned with a change in
+length rather then the actual length, the most significant 4-bits of
+each measured value is not important and can be stripped off. These
+two processes make it possible to store 4 time values in each 8-bit
+register for a total of 64 measurements.
+
+     After being placed in the programming mode by detecting a low on
+pin 5 of port-B, IC1 waits for the presence of a IR signal - pressing
+of a button on the remote control transmitter. A set of 32 bursts are
+sampled from the beginning of the IR signal's data stream, measured
+and stored in IC2; this pattern being assigned to I/O pin #1. IC1
+then flashes the LED to indicate that the recording process is
+complete for that button. Depending on the duration in which the
+remote control's button is held down following the flash of the LED,
+the I/O pin is configured for either "toggle" or "momentary"
+operation. IC1 waits for the next button to be pressed on the remote
+control transmitter and repeats the above procedure; assigning this
+next pattern to I/O pin #2, and so forth. After 7 patterns have been
+received and stored, IC1 turns off the LED and returns to normal
+operation.
+
+     During normal operation, IC1 waits for any IR signal to be
+received, determines its burst pattern in the same way as in the
+programming mode, and looks for a match in memory. If a match is
+found, IC1 either toggles the state of the linked I/O pin, or holds
+the pin high until the IR signal ceases; depending on the
+configuration of the individual I/O pin as defined in the programming
+mode.
+
+Construction
+
+     All components fit nicely on a PC board measuring just less then
+2" X 3", including an area which can be used for added components
+needed in your particular application. The artwork is provided for
+those who wish to make their own boards, or a pre-fabricated board
+may be purchased from the source mentioned in the parts list.
+
+     Refer to the parts placement diagram shown in figure 5 and begin
+by soldering in the two IC sockets used for IC1 and IC2. Next, mount
+all resistors and capacitors, paying particular attention to the
+orientation of the polarized capacitor C2. Solder in the crystal
+(XTAL1) and the voltage regulator (IC3). The LED should be mounted
+with the long lead going to the terminal labeled "A" and the short
+lead to "K". Finish by mounting the IR module; including the
+soldering of the two tabs for a good ground connection to the case.
+
+     After all components have been mounted, closely examine the
+solder side of the PC board for solder bridges and/or cold solder
+joints and re-solder if necessary. Carefully plug IC1 and IC2 into
+their sockets using the orientation as shown in the parts placement
+diagram.
+
+Operation
+
+     To test the Remote Control Receiver, use the setup shown in
+figure 6. This circuit will turn on a separate LED for each I/O pin
+which goes high; easily letting you check out the unit and get a feel
+for how it works. Until an exact application and circuit has been
+determined, temporarily solder 7 solid conductor wires to the I/O
+terminals on the PC board and run them to a solderless breadboard to
+be used for your test circuit. The solderless breadboard will allow
+you to make experimental changes without having to solder and
+de-solder.
+
+     Place fresh batteries in your remote control transmitter and
+setup the receiver so that you can aim the transmitter directly at
+the receiver's IR module at a distance of 2 to 3 feet. DO NOT hold
+the transmitter closer then 2 feet or distortion caused by
+overdriving the IR module will affect the data being recorded. Also,
+make sure that there is no fluorescent lights shining directly on the
+IR module of your receiver. Some of these lights use a pulse
+frequency close to 40KHz and will interfere with the critical
+"recording" operation, causing corrupted data to be inadvertently
+stored in memory.
+
+     Apply power to the Remote Control Receiver. Locate the two
+square pads directly underneath the IR module and, using a small
+screwdriver, briefly short them together; this will cause the LED to
+light and remain on. Point the transmitter at the receiver and press
+and hold the button you wish to assign to I/O pin #1. After
+approximately 1/2 second the LED will flash off then back on. If you
+want I/O pin #1 to be configured as "toggle", immediately release the
+button on the transmitter. If you want it to be configured as
+"momentary", continue to hold the button down until the LED flashes a
+second time. Next, choose the button you wish to assign to I/O pin #2
+and repeat the above procedure. Continue until all 7 I/O pins have
+been dedicated to a button on your transmitter. After the last I/O
+pin has been programmed, the Remote Control Receiver will
+automatically end the programming mode and turn off the LED. Note,
+you must continue through and program all I/O pins before the
+programming mode will be terminated.
+
+     Now press those buttons on the remote control transmitter and
+watch as the appropriate LED turns on and off in your test circuit.
+You can assign more then one I/O pin to a single button on the
+transmitter. For instance, one I/O pin could be setup to toggle
+between high and low each time the button is pressed, while another
+(set to momentary) could indicate how long that same button is held
+down.
+
+     figure 7 shows an I/O pin being used to drive a DC load of up to
+500mA. This circuit can be repeated on all I/O pins to control 7
+different loads. Applications which come to mind include controlling
+servos and motors in robotics, or turning on any 9-volt battery
+powered device. If larger loads are required, figure 8 shows an
+interface to a relay. Although a 12V relay is shown, any relay
+operating on a voltage from 7 to 25VDC can be used simply by using
+its specific voltage to power the Remote Control Receiver.
+
+     For AC applications, figure 9 uses an optoisolator and triac to
+switch the line current coming from a standard 120VAC wall outlet.
+This circuit will control just about anything which plugs into an AC
+outlet. CAUTION! Great care should be observed when working with
+120VAC. Note that most triacs have their metal tabs tied directly to
+one of the main terminals, hence, YOU WILL BE SHOCKED if you touch
+this tab while 120VAC is applied. If large loads are being used which
+require mounting of the triac to a heat sink, use insulated mounting
+hardware such as Radio Shack #276-1373 and always check for shorts to
+ground with an ohmmeter prior to plugging into an AC outlet.
+
+     For you model railroad buffs, figure 10 shows a circuit which
+will control the track switches. Two I/O pins are required per switch
+- one for each direction - and they must be configured as momentary.
+The Remote Control Receiver can also be used to control all the other
+accessories in your setup.
+
+     The preceding is just a small example of some of the
+applications which come to mind, and typical circuits which can be
+used. Slight alterations may be required in your particular setup.
+The Remote Control Receiver described here is a low-cost, very easy
+to assemble, starting block for all your projects which you wish to
+incorporate infrared remote operation. After building and
+experimenting with this project, you'll find that the possibilities
+are unlimited. 
+
+
+Parts List
+
+Resistors (All are 1/4-watt, 10% units)
+R1 - 620 ohm
+R2 - 1,000 ohm
+
+Capacitors
+C1, C5, C6 - 0.1 uF, Mylar
+C2 - 10 uF, 35-WVDC, electrolytic
+C3, C4 - 15 pF, ceramic disc
+
+Semiconductors
+IC1 - PIC16C54-XT/P (Pre-programmed) 8-bit microcontroller
+(Microchip)
+IC2 - 93LC46 serial EEPROM (Microchip)
+IC3 - 78L05 low power 5-volt regulator
+LED1 - light emitting diode
+
+Other components
+MOD1 - 40-KHz Infrared Remote Control Receiver Module (Digi-Key part
+no. LT1060-ND or equivalent)
+XTAL1 - 4 MHz crystal
+
+
+
+The following items are available from Weeder Technologies, PO Box
+421, Batavia, OH 45103. 513-752-0279.
+
+  An etched and drilled PC board (WTRCR-B), $8.50.
+  
+  All Board mounting components including pre-programmed PIC16C54
+  (WTRCR-C), $23.50.
+  
+  A pre-programmed PIC16C54 only (PIC-RCR), $16.00
+  
+All orders must include an additional $3.50 for shipping and
+handling. Ohio residents add 6% sales tax.
+
+
+Captions:
+
+Figure 1
+  The IR signal is digitally modulated by being transmitted in
+  bursts. Fig 1a shows one being modulated by alternating the length
+  of the burst. Fig 1b shows one which is modulated by alternating
+  the time between bursts.
+
+Figure 2
+  Block diagram of the Infrared Receiver/Demodulator module (MOD1).
+  
+Figure 3
+  The output waveform at pin 1 of the IR module with respect to a
+  valid 40KHz signal being received at its input.
+  
+Figure 4
+  Schematic diagram of the IR Remote Control Receiver. The
+  microcontroller (IC1) analyzes the decoded infrared data stream
+  from the IR module (MOD1), compares it to the previously stored
+  patterns in the EEPROM (IC2), and takes action on the appropriate
+  I/O pin if a match is found.
+  
+Figure 5
+  Use this parts placement diagram when assembling the board.
+  
+Figure 6
+  Use this test setup to check out your finished project. A separate
+  LED indicates when each I/O pin goes high.
+  
+Figure 7
+  This setup can be used to turn on any DC load of up to 500mA.
+  
+Figure 8
+  For larger currents, this circuit shows the Remote Control Receiver
+  interfaced to a relay.
+  
+Figure 9
+  AC loads such as lamps, fans, stereos, etc. can be controlled using
+  this setup.
+  
+Figure 10
+  This setup can be used on a model railroad to control the track
+  switches.
