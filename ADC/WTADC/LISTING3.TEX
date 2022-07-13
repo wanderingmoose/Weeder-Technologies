@@ -1,0 +1,39 @@
+'This QBASIC program will use the RS-232 Analog Input kit for continuous
+'data acquisition on all inputs (1 thru 8) in single-ended conversion mode.
+'To monitor inputs A thru D in differential mode, change the "S" in the OUT$
+'statement in the main loop to "D", and use only four variables in the PRINT
+'and INPUT statements.
+
+'Hit "ESC" to exit the program.
+
+
+        CLS
+        OPEN "COM2:1200,N,8,1" FOR RANDOM AS #1
+       
+        DO
+            KEY$ = INKEY$
+            OUT$ = "S"
+            GOSUB TRANSMIT
+            GOSUB RECEIVE
+            LOCATE 5, 1
+            PRINT A%, B%, C%, D%, E%, F%, G%, H%
+        LOOP UNTIL KEY$ = CHR$(27)
+        CLOSE #1
+        END
+
+RECEIVE:
+        IF INPUT$(2, #1) = "AA" THEN    'test for WTADC header and address characters
+            INPUT #1, A%, B%, C%, D%, E%, F%, G%, H%
+        ELSE LINE INPUT #1, DISCARD$    'discard data using different header
+        END IF
+        RETURN
+
+TRANSMIT:
+        OUT$ = "AA" + OUT$              'append header and address characters
+        PRINT #1, OUT$                  'send string to WTADC
+        LINE INPUT #1, DISCARD$         'discard echo
+        RETURN
+       
+        
+
+
