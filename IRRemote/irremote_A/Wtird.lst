@@ -1,0 +1,707 @@
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 1
+
+Line   PC    Opcode
+
+0001               ;********************************************************
+                       **********************
+0002               ;                             IR REMOTE DECODER
+0003               ;                 Copyright (c) 1997 by Weeder Technologi
+                       es
+0004               ;                           Model  : WTIRD
+0005               ;                           Author : Terry J. Weeder
+0006               ;                           Date   : November 19, 1997
+0007               ;                           Version: 1.0
+0008               ;********************************************************
+                       **********************
+0009               
+0010               ;watchdog disabled
+0011               
+0012               list	P=16C54
+0013               
+0014         0000  ind	equ	0h
+0015         0001  rtcc	equ	1h
+0016         0002  pc	equ	2h
+0017         0003  status	equ	3h
+0018         0004  fsr	equ	4h
+0019         0005  port_a	equ	5h
+0020         0006  port_b	equ	6h
+0021         0007  port_c	equ	7h
+0022         0000  c	equ	0h
+0023         0001  dc	equ	1h
+0024         0002  z	equ	2h
+0025         0003  pd	equ	3h
+0026         0004  to	equ	4h
+0027         0007  MSB	equ	7h
+0028         0000  LSB	equ	0h
+0029               
+0030         0003  cs	equ	3h		;eeprom chip select pin
+0031         0002  clk	equ	2h		;eeprom clock pin
+0032         0001  d	equ	1h		;eeprom data pin
+0033         0000  ir	equ	0h		;infrared data input 
+0034         0005  en	equ	5h		;output enable pin
+0035         0006  cd	equ	6h		;carrier detect pin
+0036         0007  pgm	equ	7h		;programming trigger
+0037         0007  led	equ	7h		;LED output
+0038         0007  nm	equ	7h		;no-match indicator in status register
+0039         0006  sb	equ	6h		;start-bit-checked indicator in status reg
+0040               
+0041         0007  count	equ	7h
+0042         0008  count2	equ	8h
+0043         0009  match	equ	9h		;used to find IR data match in eeprom
+0044         000A  addrs1	equ	0Ah		;low byte of eeprom address
+0045         000B  addrs2	equ	0Bh		;high byte of eeprom address
+0046         000C  eeprom1	equ	0Ch		;used to send instructions to eeprom
+0047         000D  eeprom2	equ	0Dh		;used to send instructions to eeprom
+0048         000E  mem_reg	equ	0Eh		;data in/out of eeprom
+0049         000F  com_reg	equ	0Fh		;data in/out of com port
+0050         000F  output	equ	0Fh		;decoded binary output
+0051               
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 2
+
+Line   PC    Opcode
+
+0052         0000  	org	1FF
+0053   01FF  0ABD  	goto	start
+0054         0000  	org	0
+0055               
+0056   0000  0C10  de_bnc	movlw	0x10		;50us delay
+0057   0001  0027  	movwf	count
+0058   0002  02E7  db1	decfsz	count
+0059   0003  0A02  	goto	db1
+0060   0004  0800  	retlw	0x00
+0061               
+0062   0005  0C08  pause	movlw	0x08		;522ms delay
+0063   0006  0027  	movwf	count
+0064   0007  0C01  p1	movlw	0x01
+0065   0008  0021  	movwf	rtcc
+0066   0009  0201  p2	movf	rtcc,w
+0067   000A  0743  	btfss	status,z
+0068   000B  0A09  	goto	p2
+0069   000C  02E7  	decfsz	count
+0070   000D  0A07  	goto	p1
+0071   000E  0800  	retlw	0x00
+0072               
+0073   000F  0C67  delay	movlw	0x67		;delay 1/2 bit @ 1200 baud 4MHz clock
+0074   0010  0027  	movwf	count
+0075   0011  0000  d1	nop
+0076   0012  02E7  	decfsz	count
+0077   0013  0A11  	goto	d1
+0078   0014  0800  	retlw	0x00
+0079               
+0080   0015  0C3F  com_r	movlw	b'00111111'	;turn on LED
+0081   0016  0006  	tris	port_b
+0082   0017  06A6  	btfsc	port_b,en	;wait for start bit
+0083   0018  0A15  	goto	com_r
+0084   0019  090F  com_r2	call	delay		;delay 1/2 bit
+0085   001A  0C08  	movlw	0x08		;8 data bits
+0086   001B  0028  	movwf	count2
+0087   001C  090F  cr1	call	delay		;delay 1 bit
+0088   001D  090F  	call	delay
+0089   001E  0403  	bcf	status,c		;get data bit
+0090   001F  032F  	rrf	com_reg
+0091   0020  06A6  	btfsc	port_b,en
+0092   0021  05EF  	bsf	com_reg,MSB
+0093   0022  02E8  	decfsz	count2
+0094   0023  0A1C  	goto	cr1		;get next data bit
+0095   0024  0CBF  	movlw	b'10111111'	;turn off LED
+0096   0025  0006  	tris	port_b
+0097   0026  090F  	call	delay		;wait for stop bit
+0098   0027  090F  	call	delay
+0099   0028  0800  	retlw	0x00
+0100               
+0101   0029  002F  com_t	movwf	com_reg
+0102   002A  0C1F  	movlw	b'00011111'	;LED on, enable pin = start bit
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 3
+
+Line   PC    Opcode
+
+0103   002B  0006  	tris	port_b
+0104   002C  0C08  	movlw	0x08		;8 data bits
+0105   002D  0028  	movwf	count2
+0106   002E  090F  	call	delay		;delay 1 bit
+0107   002F  090F  	call	delay
+0108   0030  0C1F  ct1	movlw	b'00011111'	;initialize bit as low
+0109   0031  0006  	tris	port_b
+0110   0032  0C3F  	movlw	b'00111111'	;ready to set high
+0111   0033  032F  	rrf	com_reg		;read data bit
+0112   0034  0603  	btfsc	status,c
+0113   0035  0006  	tris	port_b		;set high if required
+0114   0036  090F  	call	delay		;delay 1 bit
+0115   0037  090F  	call	delay
+0116   0038  02E8  	decfsz	count2
+0117   0039  0A30  	goto	ct1
+0118   003A  0CBF  	movlw	b'10111111'	;LED off, enable pin = stop bit
+0119   003B  0006  	tris	port_b
+0120   003C  090F  	call	delay		;pause for stop bit
+0121   003D  0800  	retlw	0x00
+0122               
+0123   003E  0705  measure	btfss	port_a,ir	;wait for high on IR pin
+0124   003F  0A3E  	goto	measure
+0125   0040  0900  	call	de_bnc		;verify high after 50us
+0126   0041  0705  	btfss	port_a,ir
+0127   0042  0A3E  	goto	measure
+0128   0043  0C0F  	movlw	b'00001111'	;get "low" pulse time
+0129   0044  0141  	andwf	rtcc,w		;strip off high nibble for data compressio
+                       n
+0130   0045  0020  	movwf	ind
+0131   0046  0061  	clrf	rtcc		;reset rtcc
+0132   0047  0C4E  ms1	movlw	0x4E		;return if longer then 20ms
+0133   0048  0181  	xorwf	rtcc,w
+0134   0049  0643  	btfsc	status,z
+0135   004A  0A56  	goto	ms2
+0136   004B  0605  	btfsc	port_a,ir	;wait for low on IR pin
+0137   004C  0A47  	goto	ms1
+0138   004D  0900  	call	de_bnc		;verify low after 50us
+0139   004E  0605  	btfsc	port_a,ir
+0140   004F  0A47  	goto	ms1
+0141   0050  0C0F  	movlw	b'00001111'	;get "high" pulse time
+0142   0051  0161  	andwf	rtcc		;strip off high nibble for data compression
+0143   0052  0381  	swapf	rtcc,w		;place in upper half of register
+0144   0053  01E0  	addwf	ind
+0145   0054  0061  	clrf	rtcc		;reset rtcc
+0146   0055  0800  	retlw	0x00
+0147   0056  0CFF  ms2	movlw	0xFF		;test if at last register
+0148   0057  0184  	xorwf	fsr,w
+0149   0058  0643  	btfsc	status,z
+0150   0059  0800  	retlw	0x00
+0151   005A  02A4  	incf	fsr		;move to last register
+0152   005B  0A56  	goto	ms2
+0153               
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 4
+
+Line   PC    Opcode
+
+0154   005C  0C23  end_ir	movlw	0x23		;100ms timer (test for end of IR data)
+                       
+0155   005D  0027  	movwf	count
+0156   005E  0068  	clrf	count2
+0157   005F  07A6  end1	btfss	port_b,en	;test if outputs enabled
+0158   0060  0A64  	goto	end2
+0159   0061  0CA0  	movlw	b'10100000'	;set for output if true
+0160   0062  0006  	tris	port_b
+0161   0063  0A67  	goto	end3
+0162   0064  0CBF  end2	movlw	b'10111111'	;set for input if false
+0163   0065  0006  	tris	port_b
+0164   0066  0000  	nop
+0165   0067  0705  end3	btfss	port_a,ir	;restart timer if IR present
+0166   0068  0A5C  	goto	end_ir
+0167   0069  02E8  	decfsz	count2
+0168   006A  0A5F  	goto	end1
+0169   006B  02E7  	decfsz	count
+0170   006C  0A5F  	goto	end1		;end timer
+0171   006D  0800  	retlw	0x00
+0172               
+0173   006E  0C0C  opcode	movlw	0x0C		;93LC66, 512x8 (12 bits SB/opcode/addr
+                       ess)
+0174   006F  0027  	movwf	count
+0175   0070  0CF1  	movlw	b'11110001'	;change to output
+0176   0071  0005  	tris	port_a
+0177   0072  0565  	bsf	port_a,cs	;select chip
+0178   0073  0425  oc1	bcf	port_a,d
+0179   0074  036C  	rlf	eeprom1		;get next bit
+0180   0075  036D  	rlf	eeprom2
+0181   0076  068D  	btfsc	eeprom2,4
+0182   0077  0525  	bsf	port_a,d
+0183   0078  0545  	bsf	port_a,clk	;toggle clock pin
+0184   0079  0445  	bcf	port_a,clk
+0185   007A  02E7  	decfsz	count
+0186   007B  0A73  	goto	oc1
+0187   007C  0800  	retlw	0x00
+0188               
+0189   007D  0C0C  read	movlw	b'00001100'	;load start bit and opcode (read)
+0190   007E  002D  	movwf	eeprom2
+0191   007F  020B  	movf	addrs2,w		;load address
+0192   0080  01ED  	addwf	eeprom2
+0193   0081  020A  	movf	addrs1,w
+0194   0082  002C  	movwf	eeprom1
+0195   0083  096E  	call	opcode		;send opcode/address to eeprom
+0196   0084  0CF3  	movlw	b'11110011'	;change to input
+0197   0085  0005  	tris	port_a
+0198   0086  0C08  	movlw	0x08		;8 data bits to read from eeprom
+0199   0087  0027  	movwf	count
+0200   0088  0545  rd1	bsf	port_a,clk	;toggle clock pin
+0201   0089  0445  	bcf	port_a,clk
+0202   008A  0403  	bcf	status,c
+0203   008B  036E  	rlf	mem_reg
+0204   008C  0625  	btfsc	port_a,d		;get next data bit
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 5
+
+Line   PC    Opcode
+
+0205   008D  050E  	bsf	mem_reg,LSB
+0206   008E  02E7  	decfsz	count
+0207   008F  0A88  	goto	rd1
+0208   0090  0465  	bcf	port_a,cs	;deselect chip
+0209   0091  03EA  	incfsz	addrs1
+0210   0092  0800  	retlw	0x00
+0211   0093  02AB  	incf	addrs2
+0212   0094  0800  	retlw	0x00
+0213               
+0214   0095  002E  write	movwf	mem_reg		;load data byte
+0215   0096  0C09  	movlw	b'00001001'	;load start bit and opcode (write enab
+                       le)
+0216   0097  002D  	movwf	eeprom2
+0217   0098  0C80  	movlw	b'10000000'
+0218   0099  002C  	movwf	eeprom1
+0219   009A  096E  	call	opcode		;send to eeprom
+0220   009B  0465  	bcf	port_a,cs	;deselect chip
+0221   009C  0C0A  	movlw	b'00001010'	;load start bit and opcode (write)
+0222   009D  002D  	movwf	eeprom2
+0223   009E  020B  	movf	addrs2,w		;load address
+0224   009F  01ED  	addwf	eeprom2
+0225   00A0  020A  	movf	addrs1,w
+0226   00A1  002C  	movwf	eeprom1
+0227   00A2  096E  	call	opcode		;send opcode/address to eeprom
+0228   00A3  0C08  	movlw	0x08		;8 data bits
+0229   00A4  0027  	movwf	count
+0230   00A5  0425  wt1	bcf	port_a,d
+0231   00A6  036E  	rlf	mem_reg		;output next data bit
+0232   00A7  0603  	btfsc	status,c
+0233   00A8  0525  	bsf	port_a,d
+0234   00A9  0545  	bsf	port_a,clk	;toggle clock pin
+0235   00AA  0445  	bcf	port_a,clk
+0236   00AB  02E7  	decfsz	count
+0237   00AC  0AA5  	goto	wt1
+0238   00AD  0465  	bcf	port_a,cs	;deselect chip
+0239   00AE  0CF3  	movlw	b'11110011'	;change to input
+0240   00AF  0005  	tris	port_a
+0241   00B0  0565  	bsf	port_a,cs	;select chip
+0242   00B1  0725  wt2	btfss	port_a,d		;test for ready condition
+0243   00B2  0AB1  	goto	wt2
+0244   00B3  0465  	bcf	port_a,cs	;deselect chip
+0245   00B4  0C08  	movlw	b'00001000'	;load start bit and opcode (write disa
+                       ble)
+0246   00B5  002D  	movwf	eeprom2
+0247   00B6  006C  	clrf	eeprom1
+0248   00B7  096E  	call	opcode		;send to eeprom
+0249   00B8  0465  	bcf	port_a,cs	;deselect chip
+0250   00B9  03EA  	incfsz	addrs1
+0251   00BA  0800  	retlw	0x00
+0252   00BB  02AB  	incf	addrs2
+0253   00BC  0800  	retlw	0x00
+0254               
+0255               ;********************************************************
+                       **********************
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 6
+
+Line   PC    Opcode
+
+0256               ;                                   START
+0257               ;********************************************************
+                       **********************
+0258               
+0259   00BD  0C07  start	movlw	b'00000111'	;rtcc = internal, prescaler = 1/2
+                       56
+0260   00BE  0002  	option
+0261   00BF  0065  	clrf	port_a
+0262   00C0  0066  	clrf	port_b
+0263   00C1  0905  	call	pause		;delay 522ms
+0264               
+0265   00C2  0CF1  run	movlw	b'11110001'
+0266   00C3  0005  	tris	port_a
+0267   00C4  07A6  	btfss	port_b,en	;test if outputs enabled
+0268   00C5  0ACA  	goto	rn1
+0269   00C6  0CA0  	movlw	b'10100000'	;set for output if true
+0270   00C7  0006  	tris	port_b
+0271   00C8  04C3  	bcf	status,sb	;used to detect start bit
+0272   00C9  0ACE  	goto	rn2
+0273   00CA  0CBF  rn1	movlw	b'10111111'	;set for input if false
+0274   00CB  0006  	tris	port_b
+0275   00CC  07C3  	btfss	status,sb	;check if possible start bit
+0276   00CD  0B3C  	goto	clone
+0277   00CE  07E6  rn2	btfss	port_b,pgm	;test if request to program
+0278   00CF  0B58  	goto	program
+0279   00D0  0605  	btfsc	port_a,ir	;test if IR present
+0280   00D1  0AC2  	goto	run
+0281   00D2  0900  	call	de_bnc		;verify IR carrier after 50us
+0282   00D3  0605  	btfsc	port_a,ir
+0283   00D4  0AC2  	goto	run
+0284   00D5  0061  	clrf	rtcc		;reset rtcc
+0285   00D6  0AD7  	goto	get_ir
+0286               
+0287   00D7  0C10  get_ir	movlw	0x10		;clear 16 data registers
+0288   00D8  0024  	movwf	fsr
+0289   00D9  0060  ir1	clrf	ind
+0290   00DA  02A4  	incf	fsr
+0291   00DB  0684  	btfsc	fsr,4		;test if done
+0292   00DC  0AD9  	goto	ir1
+0293   00DD  0C02  	movlw	0x02		;two passes
+0294   00DE  0028  	movwf	count2
+0295   00DF  0C10  ir2	movlw	0x10		;set to first data register
+0296   00E0  0024  	movwf	fsr
+0297   00E1  093E  ir3	call	measure		;measure pulse length
+0298   00E2  02A4  	incf	fsr
+0299   00E3  0684  	btfsc	fsr,4		;test if done
+0300   00E4  0AE1  	goto	ir3
+0301   00E5  02E8  	decfsz	count2
+0302   00E6  0ADF  	goto	ir2
+0303   00E7  006A  	clrf	addrs1		;set to first memory location
+0304   00E8  006B  	clrf	addrs2
+0305   00E9  006F  	clrf	output		;set to first binary value
+0306   00EA  0C20  	movlw	0x20		;32 IR sample strings
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 7
+
+Line   PC    Opcode
+
+0307   00EB  0028  	movwf	count2
+0308   00EC  04E3  ir4	bcf	status,nm	;reset no-match bit
+0309   00ED  0C10  	movlw	0x10		;set to first data register
+0310   00EE  0024  	movwf	fsr
+0311   00EF  097D  ir5	call	read		;read pulse length in eeprom
+0312   00F0  0C0F  	movlw	b'00001111'	;test if match in low nibble
+0313   00F1  014E  	andwf	mem_reg,w
+0314   00F2  0029  	movwf	match
+0315   00F3  0C0F  	movlw	b'00001111'	;test if equal
+0316   00F4  0140  	andwf	ind,w
+0317   00F5  0189  	xorwf	match,w
+0318   00F6  0643  	btfsc	status,z
+0319   00F7  0B07  	goto	ir6
+0320   00F8  02A9  	incf	match		;test if 1 more
+0321   00F9  0C0F  	movlw	b'00001111'
+0322   00FA  0169  	andwf	match		;fix if carry into high nibble
+0323   00FB  0140  	andwf	ind,w
+0324   00FC  0189  	xorwf	match,w
+0325   00FD  0643  	btfsc	status,z
+0326   00FE  0B07  	goto	ir6
+0327   00FF  00E9  	decf	match		;test if 1 less
+0328   0100  00E9  	decf	match
+0329   0101  0C0F  	movlw	b'00001111'
+0330   0102  0169  	andwf	match		;fix if carry into high nibble
+0331   0103  0140  	andwf	ind,w
+0332   0104  0189  	xorwf	match,w
+0333   0105  0743  	btfss	status,z
+0334   0106  05E3  	bsf	status,nm	;set no-match bit
+0335   0107  0CF0  ir6	movlw	b'11110000'	;test if match in high nibble
+0336   0108  014E  	andwf	mem_reg,w
+0337   0109  0029  	movwf	match
+0338   010A  03A9  	swapf	match
+0339   010B  03A0  	swapf	ind
+0340   010C  0C0F  	movlw	b'00001111'	;test if equal
+0341   010D  0140  	andwf	ind,w
+0342   010E  0189  	xorwf	match,w
+0343   010F  0643  	btfsc	status,z
+0344   0110  0B20  	goto	ir7
+0345   0111  02A9  	incf	match		;test if 1 more
+0346   0112  0C0F  	movlw	b'00001111'
+0347   0113  0169  	andwf	match		;fix if carry into high nibble
+0348   0114  0140  	andwf	ind,w
+0349   0115  0189  	xorwf	match,w
+0350   0116  0643  	btfsc	status,z
+0351   0117  0B20  	goto	ir7
+0352   0118  00E9  	decf	match		;test if 1 less
+0353   0119  00E9  	decf	match
+0354   011A  0C0F  	movlw	b'00001111'
+0355   011B  0169  	andwf	match		;fix if carry into high nibble
+0356   011C  0140  	andwf	ind,w
+0357   011D  0189  	xorwf	match,w
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 8
+
+Line   PC    Opcode
+
+0358   011E  0743  	btfss	status,z
+0359   011F  05E3  	bsf	status,nm	;set no-match bit
+0360   0120  03A0  ir7	swapf	ind		;set back to original
+0361   0121  06E3  	btfsc	status,nm	;test if no match
+0362   0122  0B34  	goto	nomatch
+0363   0123  02A4  	incf	fsr
+0364   0124  0684  	btfsc	fsr,4		;test if done
+0365   0125  0AEF  	goto	ir5
+0366   0126  020F  	movf	output,w		;place binary number on port
+0367   0127  0D40  	iorlw	b'01000000'	;CD high
+0368   0128  0026  	movwf	port_b
+0369   0129  095C  	call	end_ir		;wait until button released
+0370   012A  0066  	clrf	port_b		;CD low, clear port
+0371   012B  0061  	clrf	rtcc		;delay 3ms (ignor glitch)
+0372   012C  0C0C  ir8	movlw	0x0C
+0373   012D  0181  	xorwf	rtcc,w
+0374   012E  0743  	btfss	status,z
+0375   012F  0B2C  	goto	ir8		;end delay
+0376   0130  0AC2  	goto	run
+0377               
+0378   0131  02AA  	incf	addrs1		;set eeprom address for next pin
+0379   0132  0643  	btfsc	status,z
+0380   0133  02AB  	incf	addrs2
+0381   0134  02A4  nomatch	incf	fsr
+0382   0135  0684  	btfsc	fsr,4		;test if done
+0383   0136  0B31  	goto	nomatch-3
+0384   0137  02AF  	incf	output		;set to next binary value
+0385   0138  02E8  	decfsz	count2
+0386   0139  0AEC  	goto	ir4
+0387   013A  095C  	call	end_ir		;wait until button released
+0388   013B  0AC2  	goto	run
+0389               
+0390   013C  05C3  clone	bsf	status,sb	;mark as done
+0391   013D  0915  	call	com_r		;get first byte
+0392   013E  0C55  	movlw	b'01010101'	;test if clone request
+0393   013F  01AF  	xorwf	com_reg
+0394   0140  0743  	btfss	status,z
+0395   0141  0AC2  	goto	run		;abort if not
+0396   0142  0929  	call	com_t		;send acknowledgement byte
+0397   0143  006A  	clrf	addrs1		;set to first eeprom address
+0398   0144  006B  	clrf	addrs2
+0399   0145  097D  cl1	call	read		;get byte from eeprom
+0400   0146  020E  	movf	mem_reg,w
+0401   0147  0929  	call	com_t		;transmit byte to slave
+0402   0148  0915  	call	com_r		;wait for slave to respond
+0403   0149  020F  	movf	com_reg,w	;check for error
+0404   014A  018E  	xorwf	mem_reg,w
+0405   014B  0743  	btfss	status,z
+0406   014C  0BAB  	goto	error
+0407   014D  072B  	btfss	addrs2,1		;test if done
+0408   014E  0B45  	goto	cl1
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 9
+
+Line   PC    Opcode
+
+0409   014F  0AC2  	goto	run
+0410               
+0411   0150  0915  copy	call	com_r		;get byte from host
+0412   0151  020F  	movf	com_reg,w	;write byte to eeprom
+0413   0152  0995  	call	write
+0414   0153  020F  	movf	com_reg,w	;transmit byte back to host
+0415   0154  0929  	call	com_t
+0416   0155  072B  	btfss	addrs2,1		;test if done
+0417   0156  0B50  	goto	copy
+0418   0157  0AC2  	goto	run
+0419               
+0420   0158  0066  program	clrf	port_b
+0421   0159  0C3F  	movlw	b'00111111'	;turn on LED
+0422   015A  0006  	tris	port_b
+0423   015B  0905  	call	pause		;ignor any glitches
+0424   015C  0905  	call	pause
+0425   015D  006A  	clrf	addrs1		;set to first eeprom address
+0426   015E  006B  	clrf	addrs2
+0427   015F  0C55  	movlw	b'01010101'	;send clone request
+0428   0160  0929  	call	com_t
+0429   0161  0919  	call	com_r2		;get byte from com port
+0430   0162  0C3F  	movlw	b'00111111'	;turn LED back on
+0431   0163  0006  	tris	port_b
+0432   0164  0C55  	movlw	b'01010101'	;test if acknowledgement byte
+0433   0165  01AF  	xorwf	com_reg
+0434   0166  0643  	btfsc	status,z
+0435   0167  0B50  	goto	copy		;copy host if true
+0436   0168  0C80  pr1	movlw	0x80		;wait 10 seconds for IR carrier
+0437   0169  0028  	movwf	count2
+0438   016A  0061  	clrf	rtcc
+0439   016B  0705  pr2	btfss	port_a,ir
+0440   016C  0B75  	goto	pr3
+0441   016D  0CFF  	movlw	0xFF
+0442   016E  0181  	xorwf	rtcc,w
+0443   016F  0743  	btfss	status,z
+0444   0170  0B6B  	goto	pr2
+0445   0171  0061  	clrf	rtcc
+0446   0172  02E8  	decfsz	count2
+0447   0173  0B6B  	goto	pr2
+0448   0174  0BA4  	goto	end_prog		;end if no IR carrier
+0449   0175  0900  pr3	call	de_bnc		;verify IR carrier after 50us
+0450   0176  0605  	btfsc	port_a,ir
+0451   0177  0B6B  	goto	pr2
+0452   0178  0061  	clrf	rtcc		;reset rtcc
+0453   0179  0C10  	movlw	0x10		;clear 16 data registers
+0454   017A  0024  	movwf	fsr		;set to first data register
+0455   017B  0060  pr4	clrf	ind
+0456   017C  02A4  	incf	fsr
+0457   017D  0684  	btfsc	fsr,4		;test if done
+0458   017E  0B7B  	goto	pr4
+0459   017F  0C02  	movlw	0x02		;two passes
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 10
+
+Line   PC    Opcode
+
+0460   0180  0028  	movwf	count2
+0461   0181  0C10  pr5	movlw	0x10		;set to first data register
+0462   0182  0024  	movwf	fsr
+0463   0183  093E  pr6	call	measure		;measure pulse length
+0464   0184  02A4  	incf	fsr
+0465   0185  0684  	btfsc	fsr,4		;test if done
+0466   0186  0B83  	goto	pr6
+0467   0187  02E8  	decfsz	count2
+0468   0188  0B81  	goto	pr5
+0469   0189  0C10  	movlw	0x10		;write data to eeprom
+0470   018A  0024  	movwf	fsr
+0471   018B  0200  pr7	movf	ind,w
+0472   018C  0995  	call	write
+0473   018D  02A4  	incf	fsr
+0474   018E  0684  	btfsc	fsr,4		;test if done
+0475   018F  0B8B  	goto	pr7
+0476   0190  0905  	call	pause
+0477   0191  0CBF  	movlw	b'10111111'	;turn off LED
+0478   0192  0006  	tris	port_b
+0479   0193  0905  	call	pause
+0480   0194  0C3F  	movlw	b'00111111'	;turn on LED
+0481   0195  0006  	tris	port_b
+0482   0196  0C9C  pr8	movlw	0x9C		;200ms timer (test for end of IR data)
+0483   0197  0027  	movwf	count
+0484   0198  0068  	clrf	count2
+0485   0199  0705  pr9	btfss	port_a,ir	;restart timer if IR present
+0486   019A  0B96  	goto	pr8
+0487   019B  02E8  	decfsz	count2
+0488   019C  0B99  	goto	pr9
+0489   019D  02E7  	decfsz	count
+0490   019E  0B99  	goto	pr9		;end timer
+0491   019F  072B  	btfss	addrs2,1		;test if done
+0492   01A0  0B68  	goto	pr1		;program next button
+0493   01A1  0CBF  	movlw	b'10111111'	;turn off LED
+0494   01A2  0006  	tris	port_b
+0495   01A3  0AC2  	goto	run
+0496               
+0497   01A4  0CFF  end_prog	movlw	0xFF		;fill remaining eeprom with "FF"
+0498   01A5  0995  	call	write
+0499   01A6  072B  	btfss	addrs2,1		;test if done
+0500   01A7  0BA4  	goto	end_prog
+0501   01A8  0CBF  	movlw	b'10111111'	;turn off LED
+0502   01A9  0006  	tris	port_b
+0503   01AA  0AC2  	goto	run
+0504               
+0505   01AB  0C3F  error	movlw	b'00111111'	;turn on LED
+0506   01AC  0006  	tris	port_b
+0507   01AD  0905  	call	pause
+0508   01AE  0CBF  	movlw	b'10111111'	;turn off LED
+0509   01AF  0006  	tris	port_b
+0510   01B0  0905  	call	pause
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 11
+
+Line   PC    Opcode
+
+0511   01B1  0BAB  	goto	error		;loop until reset
+0512               
+0513         0000  	end
+16c5x/XX Cross-Assembler V4.00 Released  Wed Nov 19 09:59:08 1997  Page 12
+
+
+
+Cross-Reference Listing
+LABEL        VALUE        DEFN        REFERENCES
+LSB          0            28          28     205    
+MSB          7            27          27     92     
+addrs1       10           44          44     193    209    225    250    303    
+                                      378    397    425    
+addrs2       11           45          45     191    211    223    252    304    
+                                      380    398    407    416    426    491    
+                                      499    
+c            0            22          22     89     112    202    232    
+cd           6            35          35     
+cl1          325          399         399    408    
+clk          2            31          31     183    184    200    201    234    
+                                      235    
+clone        316          390         276    390    
+com_r        21           80          80     83     391    402    411    
+com_r2       25           84          84     429    
+com_reg      15           49          49     90     92     101    111    393    
+                                      403    412    414    433    
+com_t        41           101         101    396    401    415    428    
+copy         336          411         411    417    435    
+count        7            41          41     57     58     63     69     74     
+                                      76     155    169    174    185    199    
+                                      206    229    236    483    489    
+count2       8            42          42     86     93     105    116    156    
+                                      167    294    301    307    385    437    
+                                      446    460    467    484    487    
+cr1          28           87          87     94     
+cs           3            30          30     177    208    220    238    241    
+                                      244    249    
+ct1          48           108         108    117    
+d            1            32          32     178    182    204    230    233    
+                                      242    
+d1           17           75          75     77     
+db1          2            58          58     59     
+dc           1            23          23     
+de_bnc       0            56          56     125    138    281    449    
+delay        15           73          73     84     87     88     97     98     
+                                      106    107    114    115    120    
+eeprom1      12           46          46     179    194    218    226    247    
+eeprom2      13           47          47     180    181    190    192    216    
+                                      222    224    246    
+en           5            34          34     82     91     157    267    
+end1         95           157         157    168    170    
+end2         100          162         158    162    
+end3         103          165         161    165    
+end_ir       92           154         154    166    369    387    
+end_prog     420          497         448    497    500    
+error        427          505         406    505    511    
+fsr          4            18          18     148    151    288    290    291    
+                                      296    298    299    310    363    364    
+                                      381    382    454    456    457    462    
+                                      464    465    470    473    474    
+get_ir       215          287         285    287    
+ind          0            14          14     130    144    289    316    323    
+                                      331    339    341    348    356    360    
+                                      455    471    
+ir           0            33          33     123    126    136    139    165    
+                                      279    282    439    450    485    
+ir1          217          289         289    292    
+ir2          223          295         295    302    
+ir3          225          297         297    300    
+ir4          236          308         308    386    
+ir5          239          311         311    365    
+ir6          263          335         319    326    335    
+ir7          288          360         344    351    360    
+ir8          300          372         372    375    
+led          7            37          37     
+match        9            43          43     314    317    320    322    324    
+                                      327    328    330    332    337    338    
+                                      342    345    347    349    352    353    
+                                      355    357    
+measure      62           123         123    124    127    297    463    
+mem_reg      14           48          48     203    205    214    231    313    
+                                      336    400    404    
+ms1          71           132         132    137    140    
+ms2          86           147         135    147    152    
+nm           7            38          38     308    334    359    361    
+nomatch      308          381         362    381    383    
+oc1          115          178         178    186    
+opcode       110          173         173    195    219    227    248    
+output       15           50          50     305    366    384    
+p1           7            64          64     70     
+p2           9            66          66     68     
+pause        5            62          62     263    423    424    476    479    
+                                      507    510    
+pc           2            16          16     
+pd           3            25          25     
+pgm          7            36          36     277    
+port_a       5            19          19     123    126    136    139    165    
+                                      176    177    178    182    183    184    
+                                      197    200    201    204    208    220    
+                                      230    233    234    235    238    240    
+                                      241    242    244    249    261    266    
+                                      279    282    439    450    485    
+port_b       6            20          20     81     82     91     96     103    
+                                      109    113    119    157    160    163    
+                                      262    267    270    274    277    368    
+                                      370    420    422    431    478    481    
+                                      494    502    506    509    
+port_c       7            21          21     
+pr1          360          436         436    492    
+pr2          363          439         439    444    447    451    
+pr3          373          449         440    449    
+pr4          379          455         455    458    
+pr5          385          461         461    468    
+pr6          387          463         463    466    
+pr7          395          471         471    475    
+pr8          406          482         482    486    
+pr9          409          485         485    488    490    
+program      344          420         278    420    
+rd1          136          200         200    207    
+read         125          189         189    311    399    
+rn1          202          273         268    273    
+rn2          206          277         272    277    
+rtcc         1            15          15     65     66     129    131    133    
+                                      142    143    145    284    371    373    
+                                      438    442    445    452    
+run          194          265         265    280    283    376    388    395    
+                                      409    418    495    503    
+sb           6            39          39     271    275    390    
+start        189          259         53     259    
+status       3            17          17     67     89     112    134    149    
+                                      202    232    271    275    308    318    
+                                      325    333    334    343    350    358    
+                                      359    361    374    379    390    394    
+                                      405    434    443    
+to           4            26          26     
+write        149          214         214    413    472    498    
+wt1          165          230         230    237    
+wt2          177          242         242    243    
+z            2            24          24     67     134    149    318    325    
+                                      333    343    350    358    374    379    
+                                      394    405    434    443    
+
