@@ -1,0 +1,1033 @@
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 1
+
+Line   PC    Opcode
+
+0001               ;********************************************************
+                       **********************
+0002               ;                        RS-232 DIGITAL INPUT/OUTPUT
+0003               ;                  Copyright (c) 1996 by Weeder Technolog
+                       ies
+0004               ;                           Model  : WTDIO
+0005               ;                           Author : Terry J. Weeder
+0006               ;                           Date   : November 12, 1996
+0007               ;                           Version: 1.0
+0008               ;********************************************************
+                       **********************
+0009               
+0010               ;watchdog disabled
+0011               
+0012               list P=16C55
+0013               
+0014               include      "ascii.equ"
+0015               ;*********************   ASCII TABLE   ******************
+                       **
+0016               ;
+0017         000D  _cr  equ     0x0D
+0018         0020  _space       equ     0x20
+0019         002E  _period      equ     0x2E
+0020         002D  _hyphen      equ     0x2D
+0021         002C  _comma       equ     0x2C
+0022         0023  _#   equ     0x23
+0023         002A  _star        equ     0x2A
+0024         0030  _0   equ     0x30
+0025         0031  _1   equ     0x31
+0026         0032  _2   equ     0x32
+0027         0033  _3   equ     0x33
+0028         0034  _4   equ     0x34
+0029         0035  _5   equ     0x35
+0030         0036  _6   equ     0x36
+0031         0037  _7   equ     0x37
+0032         0038  _8   equ     0x38
+0033         0039  _9   equ     0x39
+0034         003A  _:   equ     0x3A
+0035         003F  _?   equ     0x3F
+0036         0041  _A   equ     0x41
+0037         0042  _B   equ     0x42
+0038         0043  _C   equ     0x43
+0039         0044  _D   equ     0x44
+0040         0045  _E   equ     0x45
+0041         0046  _F   equ     0x46
+0042         0047  _G   equ     0x47
+0043         0048  _H   equ     0x48
+0044         0049  _I   equ     0x49
+0045         004A  _J   equ     0x4A
+0046         004B  _K   equ     0x4B
+0047         004C  _L   equ     0x4C
+0048         004D  _M   equ     0x4D
+0049         004E  _N   equ     0x4E
+0050         004F  _O   equ     0x4F
+0051         0050  _P   equ     0x50
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 2
+
+Line   PC    Opcode
+
+0052         0051  _Q   equ     0x51
+0053         0052  _R   equ     0x52
+0054         0053  _S   equ     0x53
+0055         0054  _T   equ     0x54
+0056         0055  _U   equ     0x55
+0057         0056  _V   equ     0x56
+0058         0057  _W   equ     0x57
+0059         0058  _X   equ     0x58
+0060         0059  _Y   equ     0x59
+0061         005A  _Z   equ     0x5A
+0062         005F  __   equ     0x5F
+0063         0061  _a   equ     0x61
+0064         0062  _b   equ     0x62
+0065         0063  _c   equ     0x63
+0066         0064  _d   equ     0x64
+0067         0065  _e   equ     0x65
+0068         0066  _f   equ     0x66
+0069         0067  _g   equ     0x67
+0070         0068  _h   equ     0x68
+0071         0069  _i   equ     0x69
+0072         006A  _j   equ     0x6A
+0073         006B  _k   equ     0x6B
+0074         006C  _l   equ     0x6C
+0075         006D  _m   equ     0x6D
+0076         006E  _n   equ     0x6E
+0077         006F  _o   equ     0x6F
+0078         0070  _p   equ     0x70
+0079         0071  _q   equ     0x71
+0080         0072  _r   equ     0x72
+0081         0073  _s   equ     0x73
+0082         0074  _t   equ     0x74
+0083         0075  _u   equ     0x75
+0084         0076  _v   equ     0x76
+0085         0077  _w   equ     0x77
+0086         0078  _x   equ     0x78
+0087         0079  _y   equ     0x79
+0088         007A  _z   equ     0x7A
+0089               
+0090         0000  ind  equ     0h
+0091         0001  rtcc equ     1h
+0092         0002  pc   equ     2h
+0093         0003  status       equ     3h
+0094         0004  fsr  equ     4h
+0095         0005  port_a       equ     5h
+0096         0006  port_b       equ     6h
+0097         0007  port_c       equ     7h
+0098         0000  c    equ     0h
+0099         0001  dc   equ     1h
+0100         0002  z    equ     2h
+0101         0003  pd   equ     3h
+0102         0004  to   equ     4h
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 3
+
+Line   PC    Opcode
+
+0103         0007  MSB  equ     7h
+0104         0000  LSB  equ     0h
+0105               
+0106         0000  ct   equ     0h              ;com transmit data
+0107         0001  cr   equ     1h              ;com receive data
+0108         0002  dtr  equ     2h              ;com dtr
+0109         0003  led  equ     3h              ;red LED
+0110         0007  mx   equ     7h              ;matrix enable pin in status register
+0111               
+0112         0008  count        equ     8h
+0113         0009  count2       equ     9h
+0114         000A  com_reg      equ     0Ah             ;data to/from com port
+0115         000B  temp1        equ     0Bh             ;temporary register
+0116         000C  temp2        equ     0Ch             ;temporary register
+0117         000D  pin_dir1     equ     0Dh             ;direction of port_b pins
+0118         000E  pin_dir2     equ     0Eh             ;direction of port_c pins
+0119         000F  config1      equ     0Fh             ;button and/or switch configuration
+0120         0010  config2      equ     10h             ;button and/or switch configuration
+0121         0011  butt1        equ     11h             ;pins set up for button on port_b
+0122         0012  butt2        equ     12h             ;pins set up for button on port_c
+0123         0013  sw1  equ     13h             ;pins set up for switch on port_b
+0124         0014  sw2  equ     14h             ;pins set up for switch on port_c
+0125         0015  old_sw1      equ     15h             ;last state of switches on port_b
+0126         0016  old_sw2      equ     16h             ;last state of switches on port_c
+0127         0017  command      equ     17h             ;operation from com port
+0128         0018  pin  equ     18h             ;pin number from com port
+0129         0019  pin2 equ     19h             ;second pin used in matrix routine
+0130         001A  state        equ     1Ah             ;state of pin
+0131         001B  pause        equ     1Bh             ;delay used in debnc
+0132               
+0133         0000       org     1FF
+0134   01FF  0A94       goto    start
+0135         0000       org     0
+0136               
+0137   0000  0C0A  header       movlw   0x0A            ;loop for 8.3ms (10 bits)
+0138   0001  0028       movwf   count
+0139   0002  0061       clrf    rtcc
+0140   0003  0912  hdr1 call    delay
+0141   0004  0625       btfsc   port_a,cr       ;restart loop if com port busy
+0142   0005  0A00       goto    header
+0143   0006  02E8       decfsz  count
+0144   0007  0A03       goto    hdr1            ;end loop
+0145   0008  0C44       movlw   _D              ;send header character
+0146   0009  0A63       goto    com_t
+0147               
+0148   000A  0387  addrs        swapf   port_c,w                ;read address from S1
+0149   000B  0E0F       andlw   b'00001111'     ;strip off high nybble
+0150   000C  0D40       iorlw   b'01000000'     ;convert to ascii character
+0151   000D  002B       movwf   temp1           ;fix address
+0152   000E  028B       incf    temp1,w
+0153   000F  0A63       goto    com_t           ;send address
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 4
+
+Line   PC    Opcode
+
+0154               
+0155   0010  0C0D  footer       movlw   _cr             ;send carriage return
+0156   0011  0A63       goto    com_t
+0157               
+0158   0012  0C68  delay        movlw   0x68            ;delay 1 bit (832us)
+0159   0013  0181       xorwf   rtcc,w
+0160   0014  0743       btfss   status,z
+0161   0015  0A12       goto    delay
+0162   0016  0061       clrf    rtcc
+0163   0017  0800       retlw   0x00
+0164               
+0165   0018  0C07  debnc        movlw   b'00000111'     ;rtcc = internal, prescaler = 1/2
+                       56
+0166   0019  0002       option
+0167   001A  0061       clrf    rtcc
+0168   001B  021B  db1  movf    pause,w         ;get delay value (65ms or 32ms)
+0169   001C  0181       xorwf   rtcc,w
+0170   001D  0743       btfss   status,z
+0171   001E  0A1B       goto    db1
+0172   001F  0C02       movlw   b'00000010'     ;rtcc = internal, prescaler = 1/8
+0173   0020  0002       option
+0174   0021  0800       retlw   0x00
+0175               
+0176   0022  0028  pin_read     movwf   count           ;read state of pins
+0177   0023  0206       movf    port_b,w
+0178   0024  002B       movwf   temp1
+0179   0025  0207       movf    port_c,w
+0180   0026  002C       movwf   temp2
+0181   0027  032C  pr1  rrf     temp2
+0182   0028  032B       rrf     temp1
+0183   0029  02E8       decfsz  count
+0184   002A  0A27       goto    pr1
+0185   002B  0800       retlw   0x00
+0186               
+0187   002C  006B  pin_hi       clrf    temp1           ;set pin high
+0188   002D  006C       clrf    temp2
+0189   002E  0218       movf    pin,w           ;get pin #
+0190   002F  0028       movwf   count
+0191   0030  0503       bsf     status,c
+0192   0031  036B  ph1  rlf     temp1
+0193   0032  036C       rlf     temp2
+0194   0033  02E8       decfsz  count
+0195   0034  0A31       goto    ph1
+0196   0035  020B       movf    temp1,w         ;output high to port_b
+0197   0036  0126       iorwf   port_b
+0198   0037  024B       comf    temp1,w         ;set pin for output
+0199   0038  016D       andwf   pin_dir1
+0200   0039  020C       movf    temp2,w         ;output high to port_c
+0201   003A  0127       iorwf   port_c
+0202   003B  024C       comf    temp2,w         ;set pin for output
+0203   003C  016E       andwf   pin_dir2
+0204   003D  0A5C       goto    clear           ;clear former pin assignment
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 5
+
+Line   PC    Opcode
+
+0205               
+0206   003E  006B  pin_lo       clrf    temp1           ;set pin low
+0207   003F  006C       clrf    temp2
+0208   0040  0218       movf    pin,w           ;get pin #
+0209   0041  0028       movwf   count
+0210   0042  0503       bsf     status,c
+0211   0043  036B  pl1  rlf     temp1
+0212   0044  036C       rlf     temp2
+0213   0045  02E8       decfsz  count
+0214   0046  0A43       goto    pl1
+0215   0047  024B       comf    temp1,w         ;output low to port_b
+0216   0048  0166       andwf   port_b
+0217   0049  016D       andwf   pin_dir1                ;set pin for output
+0218   004A  024C       comf    temp2,w         ;output low to port_c
+0219   004B  0167       andwf   port_c
+0220   004C  016E       andwf   pin_dir2                ;set pin for output
+0221   004D  0A5C       goto    clear           ;clear former pin assignment
+0222               
+0223   004E  006B  pin_in       clrf    temp1           ;set pin for input
+0224   004F  006C       clrf    temp2
+0225   0050  0218       movf    pin,w           ;get pin #
+0226   0051  0028       movwf   count
+0227   0052  0503       bsf     status,c
+0228   0053  036B  pi1  rlf     temp1
+0229   0054  036C       rlf     temp2
+0230   0055  02E8       decfsz  count
+0231   0056  0A53       goto    pi1
+0232   0057  020B       movf    temp1,w         ;update pin direction
+0233   0058  012D       iorwf   pin_dir1
+0234   0059  020C       movf    temp2,w         ;update pin direction
+0235   005A  012E       iorwf   pin_dir2
+0236   005B  0A5C       goto    clear           ;clear former pin assignment
+0237               
+0238   005C  024B  clear        comf    temp1,w         ;clear pin assignment on port_b
+0239   005D  0171       andwf   butt1           ;disable for button
+0240   005E  0173       andwf   sw1             ;disable for switch
+0241   005F  024C       comf    temp2,w         ;clear pin assignment on port_c
+0242   0060  0172       andwf   butt2           ;disable for button
+0243   0061  0174       andwf   sw2             ;disable for switch
+0244   0062  0800       retlw   0x00
+0245               
+0246   0063  002A  com_t        movwf   com_reg
+0247   0064  0565       bsf     port_a,led      ;turn on LED
+0248   0065  0C08       movlw   0x08            ;8 data bits
+0249   0066  0028       movwf   count
+0250   0067  0061       clrf    rtcc
+0251   0068  0405       bcf     port_a,ct       ;start bit
+0252   0069  0912       call    delay           ;delay 1 bit
+0253   006A  0405  ct1  bcf     port_a,ct
+0254   006B  032A       rrf     com_reg         ;transmit data bit
+0255   006C  0603       btfsc   status,c
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 6
+
+Line   PC    Opcode
+
+0256   006D  0505       bsf     port_a,ct
+0257   006E  0912       call    delay           ;delay 1 bit
+0258   006F  02E8       decfsz  count
+0259   0070  0A6A       goto    ct1
+0260   0071  0505       bsf     port_a,ct       ;stop bit
+0261   0072  0912       call    delay           ;delay 1 bit
+0262   0073  0465       bcf     port_a,led      ;turn off LED
+0263   0074  0800       retlw   0x00
+0264               
+0265   0075  0745  com_r        btfss   port_a,dtr      ;abort if com port not active
+0266   0076  0A9E       goto    run
+0267   0077  0565       bsf     port_a,led      ;turn on LED
+0268   0078  0725       btfss   port_a,cr       ;look for start bit
+0269   0079  0A75       goto    com_r           ;loop until start bit received
+0270   007A  0061       clrf    rtcc
+0271   007B  0C34  cr1  movlw   0x34            ;delay 1/2 bit (416us)
+0272   007C  0181       xorwf   rtcc,w
+0273   007D  0743       btfss   status,z
+0274   007E  0A7B       goto    cr1
+0275   007F  0061       clrf    rtcc
+0276   0080  0725       btfss   port_a,cr       ;verify start bit
+0277   0081  0A9E       goto    run             ;abort if no start bit
+0278   0082  0C08       movlw   0x08            ;8 data bits
+0279   0083  0028       movwf   count
+0280   0084  0912  cr2  call    delay           ;delay 1 bit
+0281   0085  0403       bcf     status,c                ;get data bit
+0282   0086  032A       rrf     com_reg
+0283   0087  0625       btfsc   port_a,cr
+0284   0088  05EA       bsf     com_reg,MSB
+0285   0089  02E8       decfsz  count
+0286   008A  0A84       goto    cr2             ;get next data bit
+0287   008B  026A       comf    com_reg         ;correct for inverted RS-232 data
+0288   008C  0625  cr3  btfsc   port_a,cr       ;wait for stop bit
+0289   008D  0A8C       goto    cr3
+0290   008E  0465       bcf     port_a,led      ;turn off LED
+0291   008F  0C0D       movlw   _cr             ;test for carriage return
+0292   0090  018A       xorwf   com_reg,w
+0293   0091  0643       btfsc   status,z
+0294   0092  0A9E       goto    run
+0295   0093  0800       retlw   0x00
+0296               
+0297               ;********************************************************
+                       **********************
+0298               ;                                   START
+0299               ;********************************************************
+                       **********************
+0300               
+0301   0094  0C02  start        movlw   b'00000010'     ;rtcc = internal, prescaler = 1/8
+                       
+0302   0095  0002       option
+0303   0096  0505       bsf     port_a,ct       ;assure stop bit on com port
+0304   0097  0071       clrf    butt1           ;disable all buttons
+0305   0098  0072       clrf    butt2
+0306   0099  0073       clrf    sw1             ;disable all switches
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 7
+
+Line   PC    Opcode
+
+0307   009A  0074       clrf    sw2
+0308   009B  0CFF       movlw   b'11111111'
+0309   009C  002D       movwf   pin_dir1                ;initialize port_b for input
+0310   009D  002E       movwf   pin_dir2                ;initialize port_c for input
+0311               
+0312   009E  0465  run  bcf     port_a,led      ;assure led is off
+0313   009F  0CF6       movlw   b'11110110'     ;set direction of port_a
+0314   00A0  0005       tris    port_a
+0315   00A1  020D       movf    pin_dir1,w      ;set direction of port_b
+0316   00A2  0006       tris    port_b
+0317   00A3  020E       movf    pin_dir2,w      ;set direction of port_c
+0318   00A4  0007       tris    port_c
+0319   00A5  0625       btfsc   port_a,cr       ;look for start bit
+0320   00A6  0B50       goto    rec             ;get string from com port
+0321               
+0322   00A7  0211  b1   movf    butt1,w         ;read button configuration
+0323   00A8  002F       movwf   config1
+0324   00A9  0212       movf    butt2,w
+0325   00AA  0030       movwf   config2
+0326   00AB  0078       clrf    pin
+0327   00AC  0625  b2   btfsc   port_a,cr       ;look for start bit
+0328   00AD  0B50       goto    rec             ;get string from com port
+0329   00AE  02B8       incf    pin
+0330   00AF  0C0D       movlw   0x0D            ;exit loop if beyond pin 12
+0331   00B0  0198       xorwf   pin,w
+0332   00B1  0643       btfsc   status,z
+0333   00B2  0AC3       goto    s1
+0334   00B3  0330       rrf     config2         ;test if pin set for button
+0335   00B4  032F       rrf     config1
+0336   00B5  0703       btfss   status,c
+0337   00B6  0AAC       goto    b2              ;test next pin if not
+0338   00B7  0218       movf    pin,w           ;get pin #
+0339   00B8  0922       call    pin_read                ;read state of pin
+0340   00B9  0603       btfsc   status,c                ;test if button pressed
+0341   00BA  0AAC       goto    b2              ;look for next pin set for button
+0342   00BB  0918       call    debnc
+0343   00BC  0218       movf    pin,w           ;test if button still pressed
+0344   00BD  0922       call    pin_read
+0345   00BE  0603       btfsc   status,c
+0346   00BF  0AAC       goto    b2              ;look for next pin set for button
+0347   00C0  0C4C       movlw   _L              ;set state of pin
+0348   00C1  003A       movwf   state
+0349   00C2  0B41       goto    xmit
+0350               
+0351   00C3  0213  s1   movf    sw1,w           ;read switch configuration
+0352   00C4  002F       movwf   config1
+0353   00C5  0214       movf    sw2,w
+0354   00C6  0030       movwf   config2
+0355   00C7  0078       clrf    pin
+0356   00C8  0625  s2   btfsc   port_a,cr       ;look for start bit
+0357   00C9  0B50       goto    rec             ;get string from com port
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 8
+
+Line   PC    Opcode
+
+0358   00CA  02B8       incf    pin
+0359   00CB  0C0D       movlw   0x0D            ;exit loop if beyond pin 12
+0360   00CC  0198       xorwf   pin,w
+0361   00CD  0643       btfsc   status,z
+0362   00CE  0B10       goto    m1
+0363   00CF  0330       rrf     config2         ;test if pin set for switch
+0364   00D0  032F       rrf     config1
+0365   00D1  0703       btfss   status,c
+0366   00D2  0AC8       goto    s2              ;test next pin if not
+0367   00D3  0215       movf    old_sw1,w       ;get last state of switch
+0368   00D4  002B       movwf   temp1
+0369   00D5  0216       movf    old_sw2,w
+0370   00D6  002C       movwf   temp2
+0371   00D7  0218       movf    pin,w           ;get pin #
+0372   00D8  0028       movwf   count
+0373   00D9  032C  s3   rrf     temp2
+0374   00DA  032B       rrf     temp1
+0375   00DB  02E8       decfsz  count
+0376   00DC  0AD9       goto    s3
+0377   00DD  0703       btfss   status,c                ;read last state of switch
+0378   00DE  0AF8       goto    s5
+0379   00DF  0218       movf    pin,w           ;get pin #
+0380   00E0  0922       call    pin_read                ;read state of pin
+0381   00E1  0603       btfsc   status,c                ;test if change of state
+0382   00E2  0AC8       goto    s2              ;look for next pin set for switch
+0383   00E3  0918       call    debnc
+0384   00E4  0218       movf    pin,w           ;test if still change of state
+0385   00E5  0922       call    pin_read
+0386   00E6  0603       btfsc   status,c
+0387   00E7  0AC8       goto    s2              ;look for next pin set for switch
+0388   00E8  0218       movf    pin,w           ;set last state to low
+0389   00E9  0028       movwf   count
+0390   00EA  0CFF       movlw   b'11111111'
+0391   00EB  002B       movwf   temp1
+0392   00EC  002C       movwf   temp2
+0393   00ED  036B  s4   rlf     temp1
+0394   00EE  036C       rlf     temp2
+0395   00EF  02E8       decfsz  count
+0396   00F0  0AED       goto    s4
+0397   00F1  020B       movf    temp1,w         ;save last state
+0398   00F2  0175       andwf   old_sw1
+0399   00F3  020C       movf    temp2,w
+0400   00F4  0176       andwf   old_sw2
+0401   00F5  0C4C       movlw   _L              ;set state of pin
+0402   00F6  003A       movwf   state
+0403   00F7  0B41       goto    xmit
+0404   00F8  0218  s5   movf    pin,w           ;get pin #
+0405   00F9  0922       call    pin_read                ;read state of pin
+0406   00FA  0703       btfss   status,c                ;test if change of state
+0407   00FB  0AC8       goto    s2              ;look for next switch
+0408   00FC  0918       call    debnc
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 9
+
+Line   PC    Opcode
+
+0409   00FD  0218       movf    pin,w           ;test if still change of state
+0410   00FE  0922       call    pin_read
+0411   00FF  0703       btfss   status,c
+0412   0100  0AC8       goto    s2              ;look for next pin set for switch
+0413   0101  0218       movf    pin,w           ;set last state to high
+0414   0102  0028       movwf   count
+0415   0103  006B       clrf    temp1
+0416   0104  006C       clrf    temp2
+0417   0105  036B  s6   rlf     temp1
+0418   0106  036C       rlf     temp2
+0419   0107  02E8       decfsz  count
+0420   0108  0B05       goto    s6
+0421   0109  020B       movf    temp1,w         ;save last state
+0422   010A  0135       iorwf   old_sw1
+0423   010B  020C       movf    temp2,w
+0424   010C  0136       iorwf   old_sw2
+0425   010D  0C48       movlw   _H              ;set state of pin
+0426   010E  003A       movwf   state
+0427   010F  0B41       goto    xmit
+0428               
+0429   0110  07E3  m1   btfss   status,mx       ;test if matrix enabled
+0430   0111  0B3E       goto    repeat          ;skip if not
+0431   0112  0C04       movlw   0x04            ;start row at pin #4
+0432   0113  0038       movwf   pin
+0433   0114  0625  m2   btfsc   port_a,cr       ;look for start bit
+0434   0115  0B50       goto    rec             ;get string from com port
+0435   0116  0C0F       movlw   b'00001111'     ;set row pins high
+0436   0117  0026       movwf   port_b
+0437   0118  093E       call    pin_lo          ;set row pin low
+0438   0119  0C08       movlw   0x08            ;start column at pin #8
+0439   011A  0039       movwf   pin2
+0440   011B  0219  m3   movf    pin2,w          ;test if button pressed
+0441   011C  0922       call    pin_read
+0442   011D  0703       btfss   status,c
+0443   011E  0B27       goto    m4              ;send to com port if true
+0444   011F  00F9       decf    pin2            ;set for next column
+0445   0120  0C04       movlw   0x04            ;test if all columns checked
+0446   0121  0199       xorwf   pin2,w
+0447   0122  0743       btfss   status,z
+0448   0123  0B1B       goto    m3
+0449   0124  02F8       decfsz  pin             ;set for next row
+0450   0125  0B14       goto    m2
+0451   0126  0B3E       goto    repeat          ;exit loop if no button pressed
+0452   0127  0918  m4   call    debnc
+0453   0128  0219       movf    pin2,w          ;test if button still pressed
+0454   0129  0922       call    pin_read
+0455   012A  0603       btfsc   status,c
+0456   012B  0B3E       goto    repeat
+0457   012C  0900       call    header          ;send header to com port
+0458   012D  090A       call    addrs           ;send address to com port
+0459   012E  0C4D       movlw   _M              ;send event indicator
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 10
+
+Line   PC    Opcode
+
+0460   012F  0963       call    com_t
+0461   0130  0C40       movlw   0x40            ;send row #
+0462   0131  0118       iorwf   pin,w
+0463   0132  0963       call    com_t
+0464   0133  0C40       movlw   0x40            ;send column #
+0465   0134  0119       iorwf   pin2,w
+0466   0135  0963       call    com_t
+0467   0136  0910       call    footer          ;send carriage return
+0468   0137  0918       call    debnc
+0469   0138  0918       call    debnc
+0470   0139  0918       call    debnc
+0471   013A  0918       call    debnc
+0472   013B  0C7F       movlw   0x7F            ;set debnc to 32ms
+0473   013C  003B       movwf   pause
+0474   013D  0A9E       goto    run
+0475               
+0476   013E  0CFF  repeat       movlw   0xFF            ;set debnc back to 65ms
+0477   013F  003B       movwf   pause
+0478   0140  0A9E       goto    run
+0479               
+0480   0141  0900  xmit call    header          ;send header to com port
+0481   0142  090A       call    addrs           ;send address to com port
+0482   0143  0C40       movlw   0x40            ;convert pin number to ascii and
+0483   0144  01D8       addwf   pin,w           ;send pin number
+0484   0145  0963       call    com_t
+0485   0146  021A       movf    state,w         ;send state of pin
+0486   0147  0963       call    com_t
+0487   0148  0910       call    footer          ;send carriage return
+0488   0149  0918       call    debnc           ;delay before repeat
+0489   014A  0918       call    debnc
+0490   014B  0918       call    debnc
+0491   014C  0918       call    debnc
+0492   014D  0C7F       movlw   0x7F            ;set debnc to 32ms
+0493   014E  003B       movwf   pause
+0494   014F  0A9E       goto    run
+0495               
+0496   0150  0975  rec  call    com_r           ;get first character
+0497   0151  0C44       movlw   _D              ;test for header character
+0498   0152  018A       xorwf   com_reg,w
+0499   0153  0743       btfss   status,z
+0500   0154  0BF9       goto    discard
+0501   0155  0975       call    com_r           ;get address from com port
+0502   0156  00EA       decf    com_reg         ;fix address
+0503   0157  0387       swapf   port_c,w                ;read address from S1
+0504   0158  0E0F       andlw   b'00001111'     ;strip off high nybble
+0505   0159  0D40       iorlw   0x40            ;convert to ascii character
+0506   015A  018A       xorwf   com_reg,w       ;test if matching address
+0507   015B  0743       btfss   status,z
+0508   015C  0BF9       goto    discard
+0509   015D  0975       call    com_r           ;get command character
+0510   015E  020A       movf    com_reg,w
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 11
+
+Line   PC    Opcode
+
+0511   015F  0037       movwf   command
+0512   0160  0C4D       movlw   _M              ;test if "matrix" operation
+0513   0161  0197       xorwf   command,w
+0514   0162  0643       btfsc   status,z
+0515   0163  0BA9       goto    matrix
+0516   0164  0C52       movlw   _R              ;test if "read" operation
+0517   0165  0197       xorwf   command,w
+0518   0166  0643       btfsc   status,z
+0519   0167  0BAF       goto    read
+0520   0168  0C57       movlw   _W              ;test if "write" operation
+0521   0169  0197       xorwf   command,w
+0522   016A  0643       btfsc   status,z
+0523   016B  0BC6       goto    write
+0524   016C  0975       call    com_r           ;get pin number
+0525   016D  0C41       movlw   _A              ;abort if pin number < range
+0526   016E  008A       subwf   com_reg,w
+0527   016F  0703       btfss   status,c
+0528   0170  0BF9       goto    discard
+0529   0171  0C49       movlw   _I              ;test if pin number on port_b
+0530   0172  008A       subwf   com_reg,w
+0531   0173  0703       btfss   status,c
+0532   0174  04E3       bcf     status,mx       ;disable matrix if true
+0533   0175  0C4D       movlw   _M              ;abort if pin number > range
+0534   0176  008A       subwf   com_reg,w
+0535   0177  0603       btfsc   status,c
+0536   0178  0BF9       goto    discard
+0537   0179  0C0F       movlw   b'00001111'     ;strip off high nybble
+0538   017A  014A       andwf   com_reg,w
+0539   017B  0038       movwf   pin             ;store in register
+0540   017C  0C48       movlw   _H              ;test if "high" operation
+0541   017D  0197       xorwf   command,w
+0542   017E  0643       btfsc   status,z
+0543   017F  0B91       goto    high
+0544   0180  0C4C       movlw   _L              ;test if "low" operation
+0545   0181  0197       xorwf   command,w
+0546   0182  0643       btfsc   status,z
+0547   0183  0B93       goto    low
+0548   0184  0C54       movlw   _T              ;test if "toggle" operation
+0549   0185  0197       xorwf   command,w
+0550   0186  0643       btfsc   status,z
+0551   0187  0B95       goto    toggle
+0552   0188  0C42       movlw   _B              ;test if "button" operation
+0553   0189  0197       xorwf   command,w
+0554   018A  0643       btfsc   status,z
+0555   018B  0B9D       goto    button
+0556   018C  0C53       movlw   _S              ;test if "switch" operation
+0557   018D  0197       xorwf   command,w
+0558   018E  0643       btfsc   status,z
+0559   018F  0BA3       goto    switch
+0560   0190  0BF9       goto    discard
+0561               
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 12
+
+Line   PC    Opcode
+
+0562   0191  092C  high call    pin_hi          ;set pin high
+0563   0192  0BF9       goto    discard         ;discard carriage return
+0564               
+0565   0193  093E  low  call    pin_lo          ;set pin low
+0566   0194  0BF9       goto    discard         ;discard carriage return
+0567               
+0568   0195  0218  toggle       movf    pin,w           ;get pin #
+0569   0196  0922       call    pin_read                ;read current state of pin
+0570   0197  0703       btfss   status,c
+0571   0198  0B9B       goto    t2
+0572   0199  093E       call    pin_lo          ;set pin low
+0573   019A  0BF9       goto    discard         ;discard carriage return
+0574   019B  092C  t2   call    pin_hi          ;set pin high
+0575   019C  0BF9       goto    discard         ;discard carriage return
+0576               
+0577   019D  094E  button       call    pin_in          ;set pin for input
+0578   019E  020B       movf    temp1,w         ;set pin for button on port_b
+0579   019F  0131       iorwf   butt1
+0580   01A0  020C       movf    temp2,w         ;set pin for button on port_c
+0581   01A1  0132       iorwf   butt2
+0582   01A2  0BF9       goto    discard         ;discard carriage return
+0583               
+0584   01A3  094E  switch       call    pin_in          ;set pin for input
+0585   01A4  020B       movf    temp1,w         ;set pin for switch on port_b
+0586   01A5  0133       iorwf   sw1
+0587   01A6  020C       movf    temp2,w         ;set pin for switch on port_c
+0588   01A7  0134       iorwf   sw2
+0589   01A8  0BF9       goto    discard         ;discard carriage return
+0590               
+0591   01A9  05E3  matrix       bsf     status,mx       ;enable matrix
+0592   01AA  0071       clrf    butt1           ;disable buttons on port_b
+0593   01AB  0073       clrf    sw1             ;disable switches on port_b
+0594   01AC  0CF0       movlw   b'11110000'     ;set pin direction of port_b
+0595   01AD  002D       movwf   pin_dir1
+0596   01AE  0BF9       goto    discard         ;discard carriage return
+0597               
+0598   01AF  0975  read call    com_r           ;get pin # to read
+0599   01B0  0C50       movlw   _P              ;test if "port"
+0600   01B1  018A       xorwf   com_reg,w
+0601   01B2  0643       btfsc   status,z
+0602   01B3  0BC0       goto    rd2
+0603   01B4  0C0F       movlw   b'00001111'     ;strip off high nybble
+0604   01B5  014A       andwf   com_reg,w
+0605   01B6  0038       movwf   pin
+0606   01B7  0922       call    pin_read                ;read state of pin
+0607   01B8  0603       btfsc   status,c
+0608   01B9  0BBD       goto    rd1
+0609   01BA  0C4C       movlw   _L
+0610   01BB  003A       movwf   state
+0611   01BC  0B41       goto    xmit
+0612   01BD  0C48  rd1  movlw   _H
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 13
+
+Line   PC    Opcode
+
+0613   01BE  003A       movwf   state
+0614   01BF  0B41       goto    xmit
+0615   01C0  0900  rd2  call    header          ;send header to com port
+0616   01C1  090A       call    addrs           ;send address to com port
+0617   01C2  0206       movf    port_b,w                ;read byte from port_b
+0618   01C3  0963       call    com_t           ;send byte to com port
+0619   01C4  0910       call    footer          ;send carriage return
+0620   01C5  0A9E       goto    run
+0621               
+0622   01C6  04E3  write        bcf     status,mx       ;disable matrix
+0623   01C7  0071       clrf    butt1           ;disable buttons on port_b
+0624   01C8  0073       clrf    sw1             ;disable switches on port_b
+0625   01C9  006D       clrf    pin_dir1                ;set pins for output
+0626   01CA  0975       call    com_r           ;get format from com port
+0627   01CB  0C24       movlw   0x24            ;test if ascii format
+0628   01CC  018A       xorwf   com_reg,w
+0629   01CD  0643       btfsc   status,z
+0630   01CE  0BD8       goto    wt1
+0631   01CF  0C68       movlw   _h              ;test if hex format
+0632   01D0  018A       xorwf   com_reg,w
+0633   01D1  0643       btfsc   status,z
+0634   01D2  0BDC       goto    wt2
+0635   01D3  0C62       movlw   _b              ;test if binary format
+0636   01D4  018A       xorwf   com_reg,w
+0637   01D5  0643       btfsc   status,z
+0638   01D6  0BED       goto    wt3
+0639   01D7  0BF9       goto    discard
+0640   01D8  0975  wt1  call    com_r           ;get byte from com port
+0641   01D9  020A       movf    com_reg,w
+0642   01DA  0026       movwf   port_b          ;output byte to port b
+0643   01DB  0BF9       goto    discard         ;discard carriage return
+0644   01DC  0975  wt2  call    com_r           ;get first character
+0645   01DD  0040       clrw
+0646   01DE  06CA       btfsc   com_reg,6       ;test if > 9
+0647   01DF  0C09       movlw   0x09            ;add 9 if true
+0648   01E0  01EA       addwf   com_reg
+0649   01E1  038A       swapf   com_reg,w       ;store in register
+0650   01E2  0EF0       andlw   b'11110000'     ;strip off low nybble
+0651   01E3  002B       movwf   temp1
+0652   01E4  0975       call    com_r           ;get second character
+0653   01E5  0040       clrw
+0654   01E6  06CA       btfsc   com_reg,6       ;test if > 9
+0655   01E7  0C09       movlw   0x09            ;add 9 if true
+0656   01E8  01CA       addwf   com_reg,w
+0657   01E9  0E0F       andlw   b'00001111'     ;strip off high nybble
+0658   01EA  01CB       addwf   temp1,w         ;combine with first character
+0659   01EB  0026       movwf   port_b          ;send to port b
+0660   01EC  0BF9       goto    discard         ;discard carriage return
+0661   01ED  0C08  wt3  movlw   0x08            ;receive 8 characters
+0662   01EE  0029       movwf   count2
+0663   01EF  0975  wt4  call    com_r           ;get character from com port
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 14
+
+Line   PC    Opcode
+
+0664   01F0  0403       bcf     status,c                ;initialize carry bit
+0665   01F1  060A       btfsc   com_reg,0       ;read logic level
+0666   01F2  0503       bsf     status,c
+0667   01F3  036B       rlf     temp1           ;rotate into register
+0668   01F4  02E9       decfsz  count2
+0669   01F5  0BEF       goto    wt4
+0670   01F6  020B       movf    temp1,w         ;send to port b
+0671   01F7  0026       movwf   port_b
+0672   01F8  0BF9       goto    discard         ;discard carriage return
+0673               
+0674   01F9  0975  discard      call    com_r           ;get next character
+0675   01FA  0BF9       goto    discard         ;loop until carriage return detected
+0676               
+0677         0000       end
+16c5x/XX Cross-Assembler V4.00 Released  Tue Nov 12 16:06:05 1996  Page 15
+
+
+
+Cross-Reference Listing
+LABEL        VALUE        DEFN        REFERENCES
+LSB          0            104         104    
+MSB          7            103         103    284    
+_#           35           22          22     
+_0           48           24          24     
+_1           49           25          25     
+_2           50           26          26     
+_3           51           27          27     
+_4           52           28          28     
+_5           53           29          29     
+_6           54           30          30     
+_7           55           31          31     
+_8           56           32          32     
+_9           57           33          33     
+_:           58           34          34     
+_?           63           35          35     
+_A           65           36          36     525    
+_B           66           37          37     552    
+_C           67           38          38     
+_D           68           39          39     145    497    
+_E           69           40          40     
+_F           70           41          41     
+_G           71           42          42     
+_H           72           43          43     425    540    612    
+_I           73           44          44     529    
+_J           74           45          45     
+_K           75           46          46     
+_L           76           47          47     347    401    544    609    
+_M           77           48          48     459    512    533    
+_N           78           49          49     
+_O           79           50          50     
+_P           80           51          51     599    
+_Q           81           52          52     
+_R           82           53          53     516    
+_S           83           54          54     556    
+_T           84           55          55     548    
+_U           85           56          56     
+_V           86           57          57     
+_W           87           58          58     520    
+_X           88           59          59     
+_Y           89           60          60     
+_Z           90           61          61     
+__           95           62          62     
+_a           97           63          63     
+_b           98           64          64     635    
+_c           99           65          65     
+_comma       44           21          21     
+_cr          13           17          17     155    291    
+_d           100          66          66     
+_e           101          67          67     
+_f           102          68          68     
+_g           103          69          69     
+_h           104          70          70     631    
+_hyphen      45           20          20     
+_i           105          71          71     
+_j           106          72          72     
+_k           107          73          73     
+_l           108          74          74     
+_m           109          75          75     
+_n           110          76          76     
+_o           111          77          77     
+_p           112          78          78     
+_period      46           19          19     
+_q           113          79          79     
+_r           114          80          80     
+_s           115          81          81     
+_space       32           18          18     
+_star        42           23          23     
+_t           116          82          82     
+_u           117          83          83     
+_v           118          84          84     
+_w           119          85          85     
+_x           120          86          86     
+_y           121          87          87     
+_z           122          88          88     
+addrs        10           148         148    458    481    616    
+b1           167          322         322    
+b2           172          327         327    337    341    346    
+butt1        17           121         121    239    304    322    579    592   
+
+                                      623    
+butt2        18           122         122    242    305    324    581    
+button       413          577         555    577    
+c            0            98          98     191    210    227    255    281   
+
+                                      336    340    345    365    377    381   
+
+                                      386    406    411    442    455    527   
+
+                                      531    535    570    607    664    666   
+
+clear        92           238         204    221    236    238    
+com_r        117          265         265    269    496    501    509    524   
+
+                                      598    626    640    644    652    663   
+
+                                      674    
+com_reg      10           114         114    246    254    282    284    287   
+
+                                      292    498    502    506    510    526   
+
+                                      530    534    538    600    604    628   
+
+                                      632    636    641    646    648    649   
+
+                                      654    656    665    
+com_t        99           246         146    153    156    246    460    463   
+
+                                      466    484    486    618    
+command      23           127         127    511    513    517    521    541   
+
+                                      545    549    553    557    
+config1      15           119         119    323    335    352    364    
+config2      16           120         120    325    334    354    363    
+count        8            112         112    138    143    176    183    190   
+
+                                      194    209    213    226    230    249   
+
+                                      258    279    285    372    375    389   
+
+                                      395    414    419    
+count2       9            113         113    662    668    
+cr           1            107         107    141    268    276    283    288   
+
+                                      319    327    356    433    
+cr1          123          271         271    274    
+cr2          132          280         280    286    
+cr3          140          288         288    289    
+ct           0            106         106    251    253    256    260    303   
+
+ct1          106          253         253    259    
+db1          27           168         168    171    
+dc           1            99          99     
+debnc        24           165         165    342    383    408    452    468   
+
+                                      469    470    471    488    489    490   
+
+                                      491    
+delay        18           158         140    158    161    252    257    261   
+
+                                      280    
+discard      505          674         500    508    528    536    560    563   
+
+                                      566    573    575    582    589    596   
+
+                                      639    643    660    672    674    675   
+
+dtr          2            108         108    265    
+footer       16           155         155    467    487    619    
+fsr          4            94          94     
+hdr1         3            140         140    144    
+header       0            137         137    142    457    480    615    
+high         401          562         543    562    
+ind          0            90          90     
+led          3            109         109    247    262    267    290    312   
+
+low          403          565         547    565    
+m1           272          429         362    429    
+m2           276          433         433    450    
+m3           283          440         440    448    
+m4           295          452         443    452    
+matrix       425          591         515    591    
+mx           7            110         110    429    532    591    622    
+old_sw1      21           125         125    367    398    422    
+old_sw2      22           126         126    369    400    424    
+pause        27           131         131    168    473    477    493    
+pc           2            92          92     
+pd           3            101         101    
+ph1          49           192         192    195    
+pi1          83           228         228    231    
+pin          24           128         128    189    208    225    326    329   
+
+                                      331    338    343    355    358    360   
+
+                                      371    379    384    388    404    409   
+
+                                      413    432    449    462    483    539   
+
+                                      568    605    
+pin2         25           129         129    439    440    444    446    453   
+
+                                      465    
+pin_dir1     13           117         117    199    217    233    309    315   
+
+                                      595    625    
+pin_dir2     14           118         118    203    220    235    310    317   
+
+pin_hi       44           187         187    562    574    
+pin_in       78           223         223    577    584    
+pin_lo       62           206         206    437    565    572    
+pin_read     34           176         176    339    344    380    385    405   
+
+                                      410    441    454    569    606    
+pl1          67           211         211    214    
+port_a       5            95          95     141    247    251    253    256   
+
+                                      260    262    265    267    268    276   
+
+                                      283    288    290    303    312    314   
+
+                                      319    327    356    433    
+port_b       6            96          96     177    197    216    316    436   
+
+                                      617    642    659    671    
+port_c       7            97          97     148    179    201    219    318   
+
+                                      503    
+pr1          39           181         181    184    
+rd1          445          612         608    612    
+rd2          448          615         602    615    
+read         431          598         519    598    
+rec          336          496         320    328    357    434    496    
+repeat       318          476         430    451    456    476    
+rtcc         1            91          91     139    159    162    167    169   
+
+                                      250    270    272    275    
+run          158          312         266    277    294    312    474    478   
+
+                                      494    620    
+s1           195          351         333    351    
+s2           200          356         356    366    382    387    407    412   
+
+s3           217          373         373    376    
+s4           237          393         393    396    
+s5           248          404         378    404    
+s6           261          417         417    420    
+start        148          301         134    301    
+state        26           130         130    348    402    426    485    610   
+
+                                      613    
+status       3            93          93     160    170    191    210    227   
+
+                                      255    273    281    293    332    336   
+
+                                      340    345    361    365    377    381   
+
+                                      386    406    411    429    442    447   
+
+                                      455    499    507    514    518    522   
+
+                                      527    531    532    535    542    546   
+
+                                      550    554    558    570    591    601   
+
+                                      607    622    629    633    637    664   
+
+                                      666    
+sw1          19           123         123    240    306    351    586    593   
+
+                                      624    
+sw2          20           124         124    243    307    353    588    
+switch       419          584         559    584    
+t2           411          574         571    574    
+temp1        11           115         115    151    152    178    182    187   
+
+                                      192    196    198    206    211    215   
+
+                                      223    228    232    238    368    374   
+
+                                      391    393    397    415    417    421   
+
+                                      578    585    651    658    667    670   
+
+temp2        12           116         116    180    181    188    193    200   
+
+                                      202    207    212    218    224    229   
+
+                                      234    241    370    373    392    394   
+
+                                      399    416    418    423    580    587   
+
+to           4            102         102    
+toggle       405          568         551    568    
+write        454          622         523    622    
+wt1          472          640         630    640    
+wt2          476          644         634    644    
+wt3          493          661         638    661    
+wt4          495          663         663    669    
+xmit         321          480         349    403    427    480    611    614   
+
+z            2            100         100    160    170    273    293    332   
+
+                                      361    447    499    507    514    518   
+
+                                      522    542    546    550    554    558   
+
+                                      601    629    633    637    
